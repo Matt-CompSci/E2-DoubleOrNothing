@@ -1,0 +1,164 @@
+@name DoubleOrNothing
+@inputs EGP:wirelink User:entity
+@persist Direction:vector2 [Multiplier Page]:number CurrentUser:entity
+
+if(first())
+{
+    entity():createWire(entity():isWeldedTo(), "EGP", "wirelink")
+    entity():createWire(entity():isWeldedTo(), "User", "User")
+    
+    function number pointCircleIntersection(Point:vector2, Pos:vector2, Size:vector2)
+    {
+        return Point:distance(Pos) < Size:x()
+    }
+    
+    
+    EGP:egpClear()
+    EGP:egpBox(1, vec2(256), vec2(1024))
+    EGP:egpMaterial(1, "gui/gradient_up")
+    EGP:egpAngle(1, 45)
+    EGP:egpColor(1, vec(125, 125, 255))
+    
+    EGP:egpBox(2, vec2(256), vec2(1024))
+    EGP:egpMaterial(2, "gui/gradient_down")
+    EGP:egpAngle(2, 45)
+    EGP:egpColor(2, vec(255, 125, 125))
+    
+    EGP:egpBox(3, vec2(256), vec2(40))
+    EGP:egpMaterial(3, "gui/gmod_logo")
+    
+    EGP:egpText(4, "Double Or Nothing", vec2(256, 224))
+    EGP:egpAlign(4, 1, 1)
+    EGP:egpSize(4, 42)
+    EGP:egpFont(4, "Marlett")
+    
+    EGP:egpText(5, "Press E to Start", vec2(256, 288))
+    EGP:egpAlign(5, 1, 1)
+    EGP:egpSize(5, 42)
+    EGP:egpFont(5, "Marlett")
+    
+    Page = 1
+    
+    Direction = vec2(5, 2)
+    timer("LogoAnimation", 100)
+}
+
+elseif(User & ~User)
+{
+    if(Page == 1)
+    {
+        moneyRequest(User, 1000, "DoubleOrNothing")
+    }
+    
+    elseif(Page == 2 & CurrentUser == User)
+    {
+        CursorPos = EGP:egpCursor(CurrentUser)
+        if(pointCircleIntersection(CursorPos, vec2(256, 128), vec2(100)))
+        {
+            Chance = random(0, 1)
+            
+            if(Chance > 0.5)
+            {
+                Multiplier++
+                EGP:egpSetText(6, "x" + Multiplier)
+                EGP:egpSize(4, vec2(120))
+                timer("ShrinkCircle", 0)
+            }
+            
+            else
+            {
+                reset()
+            }
+        }
+        
+        elseif(pointCircleIntersection(CursorPos, vec2(256, 384), vec2(64)))
+        {
+            Amount = 1000
+            
+            for(I = 1, Multiplier)
+            {
+                if(I != 1)
+                {
+                    Amount *= 2
+                }
+            }
+            
+            moneyGive(CurrentUser, Amount)
+            reset()
+        }
+    }
+}
+
+elseif(clk("ShrinkCircle"))
+{
+    if(EGP:egpSize(4):x() != 100)
+    {
+        EGP:egpSize(4, EGP:egpSize(4) - vec2(2))
+        timer("ShrinkCircle", 100)
+    }
+}
+
+elseif(moneyClk("DoubleOrNothing"))
+{
+    for(I = 4, 5)
+    {
+        EGP:egpRemove(I)
+    }
+    
+    Multiplier = 1
+    Page = 2
+    CurrentUser = moneyClkPlayer()
+    
+    EGP:egpCircle(4, vec2(256, 128), vec2(100))
+    EGP:egpColor(4, vec(255, 0, 0))
+    
+    EGP:egpCircle(5, vec2(256, 128), vec2(96))
+    EGP:egpColor(5, vec(65))
+    
+    EGP:egpText(6, "x" + Multiplier, vec2(256, 128))
+    EGP:egpSize(6, 42)
+    EGP:egpAlign(6, 1, 1)
+    
+    EGP:egpCircle(7, vec2(256, 384), vec2(68))
+    EGP:egpColor(7, vec(0, 0, 255))
+    
+    EGP:egpCircle(8, vec2(256, 384), vec2(64))
+    EGP:egpColor(8, vec(65))
+    
+    EGP:egpText(9, "Cash out", vec2(256, 384))
+    EGP:egpAlign(9, 1, 1)
+    
+    timer("DistanceCheck", 2000)
+}
+
+elseif(clk("LogoAnimation"))
+{
+    # Cache position to reduce ops from recalling :egpPos and :x() and :y()
+    Pos = EGP:egpPos(3)
+    PosX = Pos:x()
+    PosY = Pos:y()
+    
+    # If the X position is out of the screens bbounds then reverse the X direction
+    if(PosX > 512 | PosX < 0)
+    {
+        Direction = Direction:setX(-Direction:x())
+    } 
+    
+    # If the Y position is out of the screens bounds then reverse the Y direction
+    elseif(PosY > 512 | PosY < 0)
+    {
+        Direction = Direction:setY(-Direction:y())
+    }
+    
+    EGP:egpPos(3, Pos + Direction * 4)
+    timer("LogoAnimation", 100)
+}
+
+elseif(clk("DistanceCheck"))
+{
+    if(CurrentUser:pos():distance(EGP:entity():pos()) > 300)
+    {
+        reset()
+    }
+    timer("DistanceCheck", 2000)
+}
